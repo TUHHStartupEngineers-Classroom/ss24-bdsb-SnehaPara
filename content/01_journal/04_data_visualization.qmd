@@ -11,7 +11,7 @@ Last compiled: `r Sys.Date()`
 
 #import libraries
 library(tidyverse)
-library(data.frame)
+library(data.table)
 library(ggplot2)
 library(ggrepel)
 library(mapproj)
