@@ -4,7 +4,7 @@ author: "Sneha Para"
 ---
 
 Last compiled: `r Sys.Date()`
-
+###Code
 # Challenge 1 : Analyze the sales by location (state)
 
 ```{r plot, fig.width=14, fig.height=7}
