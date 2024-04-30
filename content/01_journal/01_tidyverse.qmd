@@ -1,98 +1,136 @@
 ---
 title: "Tidyverse"
-author: "Joschka Schwarz"
+author: "Sneha Para"
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+Last compiled: `r Sys.Date()`
 
-This is a `.qmd` file. It is plain text with special features. Any time you write just like this, it will be compiled to normal text in the website. If you put a \# in front of your text, it will create a top level-header.
+# Challenge 1 : Analyze the sales by location (state)
 
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
+```{r plot, fig.width=14, fig.height=7}
 
-# Text Formatting
+#import libraries
+library(tidyverse)
+library(readxl)
+library(lubridate)
 
-*italics* and **bold**
+#load files
+bikes_tbl      <- read_excel ("F://Sneha/ss24-bdsb-SnehaPara/Dataset/01_bike_sales/01_raw_data/bikes.xlsx") 
+orderlines_tbl <- read_excel ("F:/Sneha/ss24-bdsb-SnehaPara/Dataset/01_bike_sales/01_raw_data/orderlines.xlsx") 
+bikeshops_tbl  <- read_excel("F:/Sneha/ss24-bdsb-SnehaPara/Dataset/01_bike_sales/01_raw_data/bikeshops.xlsx") 
 
-superscript^2^ / subscript~2~
+#examine files
 
-~~strikethrough~~
+#join files using the keys product id, bikeshop id and customer id
+bike_orderlines_joined_tbl <- orderlines_tbl %>%
+  left_join(bikes_tbl, by = c("product.id" = "bike.id")) %>%
+  left_join(bikeshops_tbl, by = c("customer.id" = "bikeshop.id"))
 
-`verbatim code`
+#Examine the joined files 
 
-> Blockquote
+# Select State as feature and examine the data 
 
-# Headings
+# wrangle data 
+bike_orderlines_wrangled_tbl <- bike_orderlines_joined_tbl %>%
+  separate(col    = location,
+           into   = c("city","state"),
+           sep    = ",") %>%
+  mutate(total.price = price * quantity) %>%
+  select(-...1, -gender) %>%
+  select(-ends_with(".id")) %>%
+  bind_cols(bike_orderlines_joined_tbl %>% select(order.id)) %>% 
+  
+  select(order.id, contains("order"), contains("model"), contains("city"),state,
+         price, quantity, total.price,
+         everything()) %>%
+  rename(bikeshop = name) %>%
+  set_names(names(.) %>% str_replace_all("\\.", "_"))
 
-## Header 2
-### Header 3
-#### Header 4
-##### Header 5
-###### Header 6
-
-# Links & Images
-
-<https://quarto.org>
-
-[Quarto](https://quarto.org)
-
-![Caption](../../assets/img/elephant.png)
-
-[![Caption](../../assets/img/elephant.png)](https://quarto.org)
-
-[![Caption](../../assets/img/elephant.png)](https://quarto.org "An elephant")
+#extract required column
+sales_by_year_tbl <- bike_orderlines_wrangled_tbl %>%
+  select(order_date, total_price) %>%
+  mutate(year = year(order_date)) %>%
+  group_by(year) %>% 
+  summarize(sales = sum(total_price), .groups = "drop") %>%
+  mutate(sales_text = scales::dollar(sales, big.mark = ".", 
+                                     decimal.mark = ",", 
+                                     prefix = "", 
+                                     suffix = "€"))
 
 
-# Lists
 
-* unordered list
-    + sub-item 1
-    + sub-item 2
-        - sub-sub-item 1
-        
-*   item 2
-
-    Continued (indent 4 spaces)
-    
-    
-1. ordered list
-2. item 2
-    i) sub-item 1
-         A.  sub-sub-item 1
-         
-(@)  A list whose numbering
-
-continues after
-
-(@)  an interruption
-
-# Tables
-
-| Right | Left | Default | Center |
-|------:|:-----|---------|:------:|
-|   12  |  12  |    12   |    12  |
-|  123  |  123 |   123   |   123  |
-|    1  |    1 |     1   |     1  |
-
-# Source Code
-
-Use ``` to delimit blocks of source code:
+#plot bar chart
+sales_by_year_tbl %>%
+  
+  # Setup canvas with the columns year (x-axis) and sales (y-axis)
+  ggplot(aes(x = year, y = sales)) +
+  
+  # Geometries
+  geom_col(fill = "#2DC6D6") + # Use geom_col for a bar plot
+  geom_label(aes(label = sales_text)) + # Adding labels to the bars
+  geom_smooth(method = "lm", se = FALSE) + # Adding a trendline
+  scale_y_continuous(labels = scales::dollar_format(big.mark = ".", 
+                                                    decimal.mark = ",", 
+                                                    prefix = "", 
+                                                    suffix = "€")) +
+  labs(
+    title    = "Revenue by year",
+    subtitle = "Upward Trend",
+    x = "", # Override defaults for x and y
+    y = "Revenue"
+  )
 
 ```
-code
-```
 
-Add a language to syntax highlight code blocks:
+# Challenge 2 : Analyze the sales by location (state) by year and location 
 
-```{r}
-1 + 1
-```
+```{r  fig.width=18, fig.height=12}
+sales_by_year_state_tbl <- bike_orderlines_wrangled_tbl %>%
+  
+  # Select columns and add a year
+  select(order_date, total_price, state) %>%
+  mutate(year = year(order_date)) %>%
+  
+  # Group by and summarize year and main catgegory
+  group_by(year, state) %>%
+  summarise(sales = sum(total_price), .groups = "drop") %>%
+  ungroup() %>%
+  
+  # Format $ Text
+  mutate(sales_text = scales::dollar(sales, big.mark = ".", 
+                                     decimal.mark = ",", 
+                                     prefix = "", 
+                                     suffix = "€"))
 
-```{r}
-cars
-```
+sales_by_year_state_tbl %>%
+  
+  ggplot(aes(x = year, y = sales, fill = state)) +
+  geom_col() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  
+  facet_wrap(~ state, scales = "free_y") +
+  
+  scale_y_continuous(labels = scales::dollar_format(big.mark = ".", 
+                                                    decimal.mark = ",", 
+                                                    prefix = "", 
+                                                    suffix = "€")) +
+  labs(
+    title = "Revenue by year and state",
+    subtitle = "Each product category has an upward trend",
+    fill = "State" # Changes the legend name
+  )
 
-```{r}
-plot(cars)
+
+library("writexl")
+bike_orderlines_wrangled_tbl %>%
+  write_xlsx("bike_orderlines.xlsx")
+# 7.2 CSV ----
+bike_orderlines_wrangled_tbl %>% 
+  write_csv("bike_orderlines.csv")
+
+
+# 7.3 RDS ----
+
+bike_orderlines_wrangled_tbl %>% 
+  write_rds("bike_orderlines.rds")
+
 ```

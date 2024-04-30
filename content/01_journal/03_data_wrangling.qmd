@@ -1,8 +1,134 @@
 ---
 title: "Data Wrangling"
-author: "Joschka Schwarz"
+author: "Sneha Para"
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+Last compiled: `r Sys.Date()`
+
+### Reduced dataset Alternative 2
+
+# Patent Dominance
+
+```{r}
+
+#import libraries
+library(vroom)
+library(data.table)
+library(tidyverse)
+
+
+col_types <- list(
+  id = col_character(),
+  type = col_character(),
+  organization = col_character()
+)
+
+assignee_tbl <- vroom(
+  file       = "F:/Sneha/ss24-bdsb-SnehaPara/Dataset/Patent_data_reduced/assignee.tsv", 
+  delim      = "\t", 
+  col_types  = col_types,
+  na         = c("", "NA", "NULL")
+)
+
+col_types <- list(
+  patent_id = col_character(),
+  assignee_id = col_character()
+)
+
+patent_assignee_tbl <- vroom(
+  file       = "F:/Sneha/ss24-bdsb-SnehaPara/Dataset/Patent_data_reduced/patent_assignee.tsv", 
+  delim      = "\t", 
+  col_types  = col_types,
+  na         = c("", "NA", "NULL")
+)
+
+Join_tbl <- merge(patent_assignee_tbl,assignee_tbl, by.x = "assignee_id", by.y = "id") 
+
+num_tbl<- Join_tbl%>%
+  select(patent_id,organization)%>% 
+  count(organization)%>%
+  group_by(organization) 
+
+final_tbl <- num_tbl %>%
+  select (organization,n)%>%
+  arrange(desc(n))
+
+#List of top ten companies with most assigned/granted patents.
+
+head(final_tbl,10)
+
+```
+
+
+# Recent patent acitivity
+
+### List the top 10 companies with the most new granted patents for August 2014
+```{r}
+library(vroom)
+library(data.table)
+library(tidyverse)
+library(lubridate)
+
+
+col_types <- list(
+  id = col_character(),
+  type = col_character(),
+  organization = col_character()
+)
+
+assignee_tbl <- vroom(
+  file       = "F:/Sneha/ss24-bdsb-SnehaPara/Dataset/Patent_data_reduced/assignee.tsv", 
+  delim      = "\t", 
+  col_types  = col_types,
+  na         = c("", "NA", "NULL")
+)
+
+col_types <- list(
+  patent_id = col_character(),
+  assignee_id = col_character()
+)
+
+patent_assignee_tbl <- vroom(
+  file       = "F:/Sneha/ss24-bdsb-SnehaPara/Dataset/Patent_data_reduced/patent_assignee.tsv", 
+  delim      = "\t", 
+  col_types  = col_types,
+  na         = c("", "NA", "NULL")
+)
+
+col_types <- list(
+  id = col_character(),
+  date = col_date("%Y-%m-%d"),
+  num_claims = col_double()
+)
+
+patent_tbl <- vroom(
+  file       = "F:/Sneha/ss24-bdsb-SnehaPara/Dataset/Patent_data_reduced/patent.tsv", 
+  delim      = "\t", 
+  col_types  = col_types,
+  na         = c("", "NA", "NULL")
+)
+
+Join_tbl <- merge(patent_assignee_tbl,assignee_tbl, by.x = "assignee_id", by.y = "id") 
+Join_1_tbl <- merge(patent_tbl,Join_tbl, by.x="id", by.y ="patent_id") 
+
+Filter_2014_tbl <- Join_1_tbl %>%
+  select("id", "date", "organization")%>%
+  filter(between(date,as.Date("2014-08-01"), as.Date("2014-08-31")))%>%
+  count(organization)%>%
+  group_by(organization)    
+
+
+
+Final_tbl <- Filter_2014_tbl %>%
+  select (organization,n)%>%
+  arrange(desc(n))
+
+# List the top 10 companies with the most new granted patents for August 2014.
+
+head(Final_tbl,10)
+
+```
+
+# Innovation in Tech
+
+### top 5 USPTO tech main classes
